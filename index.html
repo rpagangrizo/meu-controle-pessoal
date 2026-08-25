@@ -185,6 +185,17 @@
     justify-content: center;
   }
   button.botao-seta:active { background: var(--card-raised); }
+
+  .toggle-concluidos {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 18px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .toggle-concluidos input { width: auto; }
   .item-lancamento {
     background: var(--card);
     border-radius: 12px;
@@ -301,6 +312,10 @@
           <span id="rotulo-mes-diaadia" class="mono"></span>
           <button type="button" id="btn-mes-seguinte" class="botao-seta">›</button>
         </div>
+        <label class="toggle-concluidos">
+          <input type="checkbox" id="checkbox-mostrar-concluidos">
+          <span>Mostrar concluídos também</span>
+        </label>
         <div id="lista-diaadia"><div class="carregando">Carregando…</div></div>
       </section>
     </div>
@@ -595,6 +610,7 @@
     if (mesDiaADia > 12) { mesDiaADia = 1; anoDiaADia += 1; }
     carregarDiaADia();
   });
+  document.getElementById("checkbox-mostrar-concluidos").addEventListener("change", carregarDiaADia);
 
   async function carregarDiaADia() {
     document.getElementById("rotulo-mes-diaadia").textContent =
@@ -602,14 +618,21 @@
 
     const prefixoMes = `${anoDiaADia}-${String(mesDiaADia).padStart(2, "0")}`;
     const proximoMes = proximoMesISO(anoDiaADia, mesDiaADia);
+    const mostrarConcluidos = document.getElementById("checkbox-mostrar-concluidos").checked;
 
-    const { data, error } = await supabaseClient
+    let consulta = supabaseClient
       .from("lancamentos")
       .select("id, data_efetivacao, descricao, valor, status, categorias(nome)")
       .eq("tipo", "dia_a_dia")
       .gte("data_efetivacao", `${prefixoMes}-01`)
       .lt("data_efetivacao", proximoMes)
       .order("data_efetivacao", { ascending: true });
+
+    if (!mostrarConcluidos) {
+      consulta = consulta.neq("status", "concluido");
+    }
+
+    const { data, error } = await consulta;
 
     const container = document.getElementById("lista-diaadia");
 
@@ -618,7 +641,9 @@
       return;
     }
     if (!data.length) {
-      container.innerHTML = `<div class="vazio">Nenhum lançamento nesse mês.</div>`;
+      container.innerHTML = mostrarConcluidos
+        ? `<div class="vazio">Nenhum lançamento nesse mês.</div>`
+        : `<div class="vazio">Nenhuma pendência nesse mês — tudo concluído! Marque "Mostrar concluídos" pra conferir.</div>`;
       return;
     }
 
@@ -658,9 +683,8 @@
           return;
         }
 
-        select.className = "seletor-status status-" + novoStatus;
-        select.closest(".item-lancamento").className = "item-lancamento status-" + novoStatus;
-        carregarResumoDoMes(); // status pode afetar o que conta como "concluido" no resumo, se um dia decidirmos filtrar por isso
+        carregarDiaADia();
+        carregarResumoDoMes();
       });
     });
   }
