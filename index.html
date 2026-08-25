@@ -158,6 +158,33 @@
   .carregando { text-align: center; color: var(--muted); font-size: 13px; padding: 40px 0; }
 
   /* ---------- Dia a dia (lista de lançamentos) ---------- */
+  .seletor-mes {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+  .seletor-mes span {
+    font-size: 15px;
+    min-width: 130px;
+    text-align: center;
+    text-transform: capitalize;
+  }
+  button.botao-seta {
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    color: var(--text);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 18px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  button.botao-seta:active { background: var(--card-raised); }
   .item-lancamento {
     background: var(--card);
     border-radius: 12px;
@@ -268,7 +295,12 @@
     <div class="tela" id="tela-diaadia">
       <section>
         <h2>Dia a dia</h2>
-        <div class="sub">Últimos lançamentos — toque no status pra mudar</div>
+        <div class="sub">Toque no status pra mudar</div>
+        <div class="seletor-mes">
+          <button type="button" id="btn-mes-anterior" class="botao-seta">‹</button>
+          <span id="rotulo-mes-diaadia" class="mono"></span>
+          <button type="button" id="btn-mes-seguinte" class="botao-seta">›</button>
+        </div>
         <div id="lista-diaadia"><div class="carregando">Carregando…</div></div>
       </section>
     </div>
@@ -358,6 +390,9 @@
   const formatoMoeda = (valor) =>
     (valor ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+  const NOMES_MESES = ["janeiro","fevereiro","março","abril","maio","junho",
+    "julho","agosto","setembro","outubro","novembro","dezembro"];
+
   // ---------- Navegação entre telas ----------
   const botoesNav = document.querySelectorAll("nav.barra-inferior button");
   botoesNav.forEach((botao) => {
@@ -419,8 +454,7 @@
     const mes = agora.getMonth() + 1;
     const prefixoMes = `${ano}-${String(mes).padStart(2, "0")}`;
 
-    const nomesMeses = ["janeiro","fevereiro","março","abril","maio","junho",
-      "julho","agosto","setembro","outubro","novembro","dezembro"];
+    const nomesMeses = NOMES_MESES;
     document.getElementById("rotulo-mes").textContent = `${nomesMeses[mes - 1]} de ${ano}`;
 
     const { data, error } = await supabaseClient
@@ -547,13 +581,35 @@
   // ---------- Dia a dia (lista com status) ----------
   const ROTULOS_STATUS = { pendente: "Pendente", agendado: "Agendado", concluido: "Concluído" };
 
+  const agoraParaDiaADia = new Date();
+  let anoDiaADia = agoraParaDiaADia.getFullYear();
+  let mesDiaADia = agoraParaDiaADia.getMonth() + 1; // 1-12
+
+  document.getElementById("btn-mes-anterior").addEventListener("click", () => {
+    mesDiaADia -= 1;
+    if (mesDiaADia < 1) { mesDiaADia = 12; anoDiaADia -= 1; }
+    carregarDiaADia();
+  });
+  document.getElementById("btn-mes-seguinte").addEventListener("click", () => {
+    mesDiaADia += 1;
+    if (mesDiaADia > 12) { mesDiaADia = 1; anoDiaADia += 1; }
+    carregarDiaADia();
+  });
+
   async function carregarDiaADia() {
+    document.getElementById("rotulo-mes-diaadia").textContent =
+      `${NOMES_MESES[mesDiaADia - 1]} de ${anoDiaADia}`;
+
+    const prefixoMes = `${anoDiaADia}-${String(mesDiaADia).padStart(2, "0")}`;
+    const proximoMes = proximoMesISO(anoDiaADia, mesDiaADia);
+
     const { data, error } = await supabaseClient
       .from("lancamentos")
       .select("id, data_efetivacao, descricao, valor, status, categorias(nome)")
       .eq("tipo", "dia_a_dia")
-      .order("data_efetivacao", { ascending: false })
-      .limit(50);
+      .gte("data_efetivacao", `${prefixoMes}-01`)
+      .lt("data_efetivacao", proximoMes)
+      .order("data_efetivacao", { ascending: true });
 
     const container = document.getElementById("lista-diaadia");
 
@@ -562,7 +618,7 @@
       return;
     }
     if (!data.length) {
-      container.innerHTML = `<div class="vazio">Nenhum lançamento do dia a dia ainda.</div>`;
+      container.innerHTML = `<div class="vazio">Nenhum lançamento nesse mês.</div>`;
       return;
     }
 
