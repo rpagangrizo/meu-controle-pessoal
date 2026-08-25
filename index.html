@@ -44,6 +44,11 @@
   .mono { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
   .display { font-family: 'Fraunces', serif; }
 
+  .eyebrow {
+    color: var(--muted); font-size: 12px; letter-spacing: 0.1em;
+    text-transform: uppercase; margin-bottom: 6px;
+  }
+
   /* ---------- Login ---------- */
   #tela-login {
     min-height: 100vh;
@@ -101,25 +106,56 @@
   /* ---------- App ---------- */
   #app { display: none; }
 
-  header.topo {
-    padding: 28px 20px 24px 20px;
+  header.topo-mini {
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 20px 14px 20px;
     border-bottom: 1px solid var(--hairline);
-    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
-  header.topo .eyebrow {
-    color: var(--muted); font-size: 12px; letter-spacing: 0.1em;
-    text-transform: uppercase; margin-bottom: 10px;
-  }
-  header.topo .saldo { font-size: 44px; font-weight: 600; line-height: 1; }
-  header.topo .saldo.positivo { color: var(--text); }
-  header.topo .saldo.atencao { color: var(--coral); }
-  header.topo .legenda { color: var(--muted); font-size: 13px; margin-top: 8px; }
+  header.topo-mini .titulo-app { font-size: 17px; font-weight: 600; }
 
   #btn-sair {
-    position: absolute; top: 28px; right: 20px;
     background: transparent; color: var(--muted);
     font-size: 12px; padding: 6px 10px; border: 1px solid var(--hairline);
+    border-radius: 8px;
   }
+
+  .cards-resumo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .card-resumo {
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    padding: 18px 16px;
+  }
+  .rotulo-card {
+    color: var(--muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+  }
+  .valor-card { font-size: 24px; font-weight: 600; }
+  .valor-card.coral { color: var(--coral); }
+  .valor-card.verde { color: var(--green); }
+
+  .total-mes-diaadia {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    background: var(--card-raised);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-top: 6px;
+    margin-bottom: 18px;
+  }
+  .total-mes-diaadia .rotulo { color: var(--muted); font-size: 13px; }
+  .total-mes-diaadia .valor { font-size: 17px; color: var(--gold); }
 
   /* cada aba e' uma "tela" separada - so uma visivel por vez */
   .tela { display: none; }
@@ -286,26 +322,45 @@
 
   <!-- ===== APP ===== -->
   <div id="app">
-    <header class="topo">
+    <header class="topo-mini">
+      <span class="titulo-app display">Meu Controle</span>
       <button id="btn-sair">Sair</button>
-      <div class="eyebrow" id="rotulo-mes">Este mês</div>
-      <div class="saldo mono" id="valor-saldo">R$ 0,00</div>
-      <div class="legenda">Total de despesas no mês, excluindo entradas e reembolsos</div>
     </header>
 
     <!-- Tela 1: Início -->
     <div class="tela ativa" id="tela-inicio">
       <section>
-        <h2>Por categoria</h2>
+        <div class="eyebrow" id="rotulo-mes">Este mês</div>
+        <div class="cards-resumo">
+          <div class="card-resumo">
+            <div class="rotulo-card">A pagar</div>
+            <div class="valor-card mono coral" id="valor-a-pagar">R$ 0,00</div>
+          </div>
+          <div class="card-resumo">
+            <div class="rotulo-card">A receber</div>
+            <div class="valor-card mono verde" id="valor-a-receber">R$ 0,00</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Tela 2: Categorias -->
+    <div class="tela" id="tela-categorias">
+      <section>
+        <h2>Categorias</h2>
         <div class="sub">Onde o dinheiro foi este mês</div>
         <div id="lista-categorias"><div class="carregando">Carregando…</div></div>
       </section>
     </div>
 
-    <!-- Tela 2: Dia a dia (lista de lançamentos com status) -->
+    <!-- Tela 3: Dia a dia (lista de lançamentos com status) -->
     <div class="tela" id="tela-diaadia">
       <section>
         <h2>Dia a dia</h2>
+        <div class="total-mes-diaadia">
+          <span class="rotulo">Total das despesas do mês</span>
+          <span class="valor mono" id="valor-total-diaadia">R$ 0,00</span>
+        </div>
         <div class="sub">Toque no status pra mudar</div>
         <div class="seletor-mes">
           <button type="button" id="btn-mes-anterior" class="botao-seta">‹</button>
@@ -320,7 +375,7 @@
       </section>
     </div>
 
-    <!-- Tela 3: Parcelamentos -->
+    <!-- Tela 4: Parcelamentos -->
     <div class="tela" id="tela-parcelamentos">
       <section>
         <h2>Parcelamentos futuros</h2>
@@ -329,7 +384,7 @@
       </section>
     </div>
 
-    <!-- Tela 3: Novo lançamento -->
+    <!-- Tela 5: Novo lançamento -->
     <div class="tela" id="tela-novo">
       <section>
         <h2>Novo lançamento</h2>
@@ -379,6 +434,10 @@
         <span class="icone">◈</span>
         <span>Início</span>
       </button>
+      <button data-tela="tela-categorias">
+        <span class="icone">◐</span>
+        <span>Categorias</span>
+      </button>
       <button data-tela="tela-diaadia">
         <span class="icone">☰</span>
         <span>Dia a dia</span>
@@ -401,6 +460,7 @@
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   const CATEGORIAS_EXCLUIDAS_DO_TOTAL = ["entradas", "reembolso arco"];
+  const CATEGORIA_RECEITA = "entradas"; // so' essa conta como "a receber"
 
   const formatoMoeda = (valor) =>
     (valor ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -488,11 +548,15 @@
       const nomeCategoria = (linha.categorias?.nome || "").trim().toLowerCase();
       return !CATEGORIAS_EXCLUIDAS_DO_TOTAL.includes(nomeCategoria);
     });
+    const linhasReceita = data.filter((linha) => {
+      const nomeCategoria = (linha.categorias?.nome || "").trim().toLowerCase();
+      return nomeCategoria === CATEGORIA_RECEITA;
+    });
 
-    const totalMes = linhasDespesa.reduce((soma, linha) => soma + Number(linha.valor), 0);
-    const elSaldo = document.getElementById("valor-saldo");
-    elSaldo.textContent = formatoMoeda(totalMes);
-    elSaldo.className = "saldo mono " + (totalMes > 0 ? "atencao" : "positivo");
+    const totalPagar = linhasDespesa.reduce((soma, linha) => soma + Number(linha.valor), 0);
+    const totalReceber = linhasReceita.reduce((soma, linha) => soma + Number(linha.valor), 0);
+    document.getElementById("valor-a-pagar").textContent = formatoMoeda(totalPagar);
+    document.getElementById("valor-a-receber").textContent = formatoMoeda(totalReceber);
 
     const porCategoria = {};
     for (const linha of linhasDespesa) {
@@ -619,6 +683,17 @@
     const prefixoMes = `${anoDiaADia}-${String(mesDiaADia).padStart(2, "0")}`;
     const proximoMes = proximoMesISO(anoDiaADia, mesDiaADia);
     const mostrarConcluidos = document.getElementById("checkbox-mostrar-concluidos").checked;
+
+    // total do mes conta TODOS os lancamentos dia a dia (independente do
+    // filtro "mostrar concluidos"), pra sempre refletir o total real gasto
+    const { data: dadosTotal } = await supabaseClient
+      .from("lancamentos")
+      .select("valor")
+      .eq("tipo", "dia_a_dia")
+      .gte("data_efetivacao", `${prefixoMes}-01`)
+      .lt("data_efetivacao", proximoMes);
+    const totalDoMes = (dadosTotal || []).reduce((soma, l) => soma + Number(l.valor), 0);
+    document.getElementById("valor-total-diaadia").textContent = formatoMoeda(totalDoMes);
 
     let consulta = supabaseClient
       .from("lancamentos")
