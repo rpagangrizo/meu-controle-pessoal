@@ -157,6 +157,48 @@
   .vazio { color: var(--muted); font-size: 13px; padding: 8px 0; }
   .carregando { text-align: center; color: var(--muted); font-size: 13px; padding: 40px 0; }
 
+  /* ---------- Dia a dia (lista de lançamentos) ---------- */
+  .item-lancamento {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    border: 1px solid var(--hairline);
+    border-left: 3px solid var(--hairline);
+  }
+  .item-lancamento.status-concluido { border-left-color: var(--green); }
+  .item-lancamento.status-agendado { border-left-color: var(--gold); }
+
+  .item-lancamento .linha1 {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+  .item-lancamento .descricao { font-size: 14px; flex: 1; }
+  .item-lancamento .valor { font-size: 14px; white-space: nowrap; }
+  .item-lancamento .linha2 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  .item-lancamento .meta {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  select.seletor-status {
+    width: auto;
+    padding: 5px 10px;
+    font-size: 12px;
+    border-radius: 20px;
+    border: 1px solid var(--hairline);
+    background: var(--card-raised);
+    color: var(--text);
+  }
+  select.seletor-status.status-concluido { color: var(--green); border-color: var(--green); }
+  select.seletor-status.status-agendado { color: var(--gold); border-color: var(--gold); }
+
   /* ---------- Novo lançamento ---------- */
   #mensagem-novo {
     font-size: 13px; text-align: center; min-height: 18px; margin-top: 4px;
@@ -222,7 +264,16 @@
       </section>
     </div>
 
-    <!-- Tela 2: Parcelamentos -->
+    <!-- Tela 2: Dia a dia (lista de lançamentos com status) -->
+    <div class="tela" id="tela-diaadia">
+      <section>
+        <h2>Dia a dia</h2>
+        <div class="sub">Últimos lançamentos — toque no status pra mudar</div>
+        <div id="lista-diaadia"><div class="carregando">Carregando…</div></div>
+      </section>
+    </div>
+
+    <!-- Tela 3: Parcelamentos -->
     <div class="tela" id="tela-parcelamentos">
       <section>
         <h2>Parcelamentos futuros</h2>
@@ -262,6 +313,14 @@
             <label for="input-data">Data</label>
             <input type="date" id="input-data" required>
           </div>
+          <div class="campo">
+            <label for="select-status-novo">Status</label>
+            <select id="select-status-novo">
+              <option value="pendente" selected>Pendente</option>
+              <option value="agendado">Agendado</option>
+              <option value="concluido">Concluído</option>
+            </select>
+          </div>
           <div id="mensagem-novo"></div>
           <button type="submit" class="primario" id="btn-salvar-novo">Salvar lançamento</button>
         </form>
@@ -272,6 +331,10 @@
       <button data-tela="tela-inicio" class="ativo">
         <span class="icone">◈</span>
         <span>Início</span>
+      </button>
+      <button data-tela="tela-diaadia">
+        <span class="icone">☰</span>
+        <span>Dia a dia</span>
       </button>
       <button data-tela="tela-parcelamentos">
         <span class="icone">▤</span>
@@ -343,6 +406,7 @@
     telaLogin.style.display = "none";
     telaApp.style.display = "block";
     await carregarResumoDoMes();
+    await carregarDiaADia();
     await carregarParcelamentos();
     await carregarCategoriasNoFormulario();
     document.getElementById("input-data").valueAsDate = new Date();
@@ -480,6 +544,76 @@
     `).join("");
   }
 
+  // ---------- Dia a dia (lista com status) ----------
+  const ROTULOS_STATUS = { pendente: "Pendente", agendado: "Agendado", concluido: "Concluído" };
+
+  async function carregarDiaADia() {
+    const { data, error } = await supabaseClient
+      .from("lancamentos")
+      .select("id, data_efetivacao, descricao, valor, status, categorias(nome)")
+      .eq("tipo", "dia_a_dia")
+      .order("data_efetivacao", { ascending: false })
+      .limit(50);
+
+    const container = document.getElementById("lista-diaadia");
+
+    if (error) {
+      container.innerHTML = `<div class="vazio">Não consegui carregar: ${error.message}</div>`;
+      return;
+    }
+    if (!data.length) {
+      container.innerHTML = `<div class="vazio">Nenhum lançamento do dia a dia ainda.</div>`;
+      return;
+    }
+
+    container.innerHTML = data.map((linha) => {
+      const dataFormatada = formatarDataCurta(linha.data_efetivacao);
+      const categoria = linha.categorias?.nome || "Sem categoria";
+      return `
+        <div class="item-lancamento status-${linha.status}" data-id="${linha.id}">
+          <div class="linha1">
+            <span class="descricao">${escaparHtml(linha.descricao || "(sem descrição)")}</span>
+            <span class="valor mono">${formatoMoeda(linha.valor)}</span>
+          </div>
+          <div class="linha2">
+            <span class="meta">${dataFormatada} · ${escaparHtml(categoria)}</span>
+            <select class="seletor-status status-${linha.status}" data-id="${linha.id}">
+              <option value="pendente" ${linha.status === "pendente" ? "selected" : ""}>Pendente</option>
+              <option value="agendado" ${linha.status === "agendado" ? "selected" : ""}>Agendado</option>
+              <option value="concluido" ${linha.status === "concluido" ? "selected" : ""}>Concluído</option>
+            </select>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    container.querySelectorAll(".seletor-status").forEach((select) => {
+      select.addEventListener("change", async (evento) => {
+        const id = evento.target.dataset.id;
+        const novoStatus = evento.target.value;
+
+        const { error: erroUpdate } = await supabaseClient
+          .from("lancamentos")
+          .update({ status: novoStatus })
+          .eq("id", id);
+
+        if (erroUpdate) {
+          alert("Não consegui salvar o status: " + erroUpdate.message);
+          return;
+        }
+
+        select.className = "seletor-status status-" + novoStatus;
+        select.closest(".item-lancamento").className = "item-lancamento status-" + novoStatus;
+        carregarResumoDoMes(); // status pode afetar o que conta como "concluido" no resumo, se um dia decidirmos filtrar por isso
+      });
+    });
+  }
+
+  function formatarDataCurta(dataIso) {
+    const [ano, mes, dia] = dataIso.split("-");
+    return `${dia}/${mes}`;
+  }
+
   // ---------- Novo lançamento ----------
   let categoriasCache = [];
 
@@ -523,6 +657,7 @@
     const categoriaId = document.getElementById("select-categoria").value || null;
     const subcategoriaId = document.getElementById("select-subcategoria").value || null;
     const data = document.getElementById("input-data").value;
+    const status = document.getElementById("select-status-novo").value;
 
     const { error } = await supabaseClient.from("lancamentos").insert({
       data_compra: data,
@@ -531,7 +666,7 @@
       subcategoria_id: subcategoriaId,
       descricao: descricao,
       valor: valor,
-      status: "concluido",
+      status: status,
       origem: "app_mobile",
       tipo: "dia_a_dia",
     });
@@ -550,8 +685,9 @@
     document.getElementById("form-novo").reset();
     document.getElementById("input-data").valueAsDate = new Date();
 
-    // atualiza os numeros do Inicio pra refletir o lancamento novo
+    // atualiza os numeros do Inicio e a lista do Dia a dia pra refletir o lancamento novo
     carregarResumoDoMes();
+    carregarDiaADia();
   });
 
   function escaparHtml(texto) {
