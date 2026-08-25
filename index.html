@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14231C">
+<title>Meu Controle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root {
+    --bg: #14231C;
+    --card: #1C2E24;
+    --card-raised: #223629;
+    --text: #F1EDE2;
+    --muted: #9DB0A2;
+    --gold: #D9A544;
+    --green: #6FBF8B;
+    --coral: #E2735A;
+    --hairline: rgba(241, 237, 226, 0.12);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    padding-bottom: 48px;
+  }
+
+  .mono {
+    font-family: 'IBM Plex Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .display {
+    font-family: 'Fraunces', serif;
+  }
+
+  /* ---------- Login ---------- */
+  #tela-login {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 32px 24px;
+  }
+
+  #tela-login .eyebrow {
+    color: var(--gold);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  #tela-login h1 {
+    font-size: 30px;
+    font-weight: 600;
+    margin: 0 0 32px 0;
+    text-align: center;
+  }
+
+  form#form-login {
+    width: 100%;
+    max-width: 340px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  input {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 14px 16px;
+    color: var(--text);
+    font-size: 16px;
+    font-family: inherit;
+  }
+
+  input:focus {
+    outline: none;
+    border-color: var(--gold);
+  }
+
+  button {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    border: none;
+    border-radius: 10px;
+    padding: 14px 16px;
+    cursor: pointer;
+  }
+
+  button.primario {
+    background: var(--gold);
+    color: #16241C;
+    margin-top: 6px;
+  }
+
+  button.primario:active { opacity: 0.85; }
+
+  #erro-login {
+    color: var(--coral);
+    font-size: 13px;
+    min-height: 18px;
+    text-align: center;
+  }
+
+  /* ---------- App ---------- */
+  #app { display: none; }
+
+  header.topo {
+    padding: 28px 20px 24px 20px;
+    border-bottom: 1px solid var(--hairline);
+    position: relative;
+  }
+
+  header.topo .eyebrow {
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  header.topo .saldo {
+    font-size: 44px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  header.topo .saldo.positivo { color: var(--text); }
+  header.topo .saldo.atencao { color: var(--coral); }
+
+  header.topo .legenda {
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 8px;
+  }
+
+  #btn-sair {
+    position: absolute;
+    top: 28px;
+    right: 20px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    padding: 6px 10px;
+    border: 1px solid var(--hairline);
+  }
+
+  section {
+    padding: 24px 20px;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  section h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 19px;
+    margin: 0 0 4px 0;
+  }
+
+  section .sub {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 18px;
+  }
+
+  /* linha estilo talao de cheque: titulo + risquinho pontilhado + valor */
+  .linha-categoria {
+    margin-bottom: 16px;
+  }
+
+  .linha-categoria .topo-linha {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+  }
+
+  .linha-categoria .nome {
+    font-size: 14px;
+  }
+
+  .linha-categoria .valor {
+    font-size: 14px;
+  }
+
+  .barra-fundo {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--card);
+    overflow: hidden;
+  }
+
+  .barra-preenchida {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold), var(--green));
+    border-radius: 3px;
+  }
+
+  .card-parcela {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    border: 1px solid var(--hairline);
+  }
+
+  .card-parcela .linha1 {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  .card-parcela .descricao {
+    font-size: 14px;
+    flex: 1;
+  }
+
+  .card-parcela .valor-restante {
+    font-size: 14px;
+    color: var(--gold);
+    white-space: nowrap;
+  }
+
+  .card-parcela .detalhe {
+    color: var(--muted);
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .total-topo {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    background: var(--card-raised);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 18px;
+  }
+
+  .total-topo .rotulo {
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .total-topo .valor {
+    font-size: 18px;
+    color: var(--gold);
+  }
+
+  .vazio {
+    color: var(--muted);
+    font-size: 13px;
+    padding: 8px 0;
+  }
+
+  .carregando {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    padding: 40px 0;
+  }
+</style>
+</head>
+<body>
+
+  <!-- ===== TELA DE LOGIN ===== -->
+  <div id="tela-login">
+    <div class="eyebrow">Controle Financeiro Pessoal</div>
+    <h1 class="display">Meu Controle</h1>
+    <form id="form-login">
+      <input type="email" id="input-email" placeholder="E-mail" autocomplete="username" required>
+      <input type="password" id="input-senha" placeholder="Senha" autocomplete="current-password" required>
+      <div id="erro-login"></div>
+      <button type="submit" class="primario" id="btn-entrar">Entrar</button>
+    </form>
+  </div>
+
+  <!-- ===== APP ===== -->
+  <div id="app">
+    <header class="topo">
+      <button id="btn-sair">Sair</button>
+      <div class="eyebrow" id="rotulo-mes">Este mês</div>
+      <div class="saldo mono" id="valor-saldo">R$ 0,00</div>
+      <div class="legenda">Total de despesas no mês, excluindo entradas e reembolsos</div>
+    </header>
+
+    <section>
+      <h2>Por categoria</h2>
+      <div class="sub">Onde o dinheiro foi este mês</div>
+      <div id="lista-categorias">
+        <div class="carregando">Carregando…</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Parcelamentos futuros</h2>
+      <div class="sub">Quanto ainda falta pagar, a partir de hoje</div>
+      <div id="lista-parcelamentos">
+        <div class="carregando">Carregando…</div>
+      </div>
+    </section>
+  </div>
+
+<script>
+  // ---------- Configuração do Supabase (projeto separado do DRAM) ----------
+  const SUPABASE_URL = "https://zwufaoortnwyvxowldkf.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_5F3vDGdIAxb_WU2CgwrJPw_IM-GOyGz";
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const CATEGORIAS_EXCLUIDAS_DO_TOTAL = ["entradas", "reembolso arco"];
+
+  const formatoMoeda = (valor) =>
+    (valor ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  // ---------- Login ----------
+  const telaLogin = document.getElementById("tela-login");
+  const telaApp = document.getElementById("app");
+  const formLogin = document.getElementById("form-login");
+  const erroLogin = document.getElementById("erro-login");
+  const btnEntrar = document.getElementById("btn-entrar");
+  const btnSair = document.getElementById("btn-sair");
+
+  formLogin.addEventListener("submit", async (evento) => {
+    evento.preventDefault();
+    erroLogin.textContent = "";
+    btnEntrar.disabled = true;
+    btnEntrar.textContent = "Entrando…";
+
+    const email = document.getElementById("input-email").value.trim();
+    const senha = document.getElementById("input-senha").value;
+
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
+
+    btnEntrar.disabled = false;
+    btnEntrar.textContent = "Entrar";
+
+    if (error) {
+      erroLogin.textContent = "E-mail ou senha incorretos.";
+      return;
+    }
+    mostrarApp();
+  });
+
+  btnSair.addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    location.reload();
+  });
+
+  async function mostrarApp() {
+    telaLogin.style.display = "none";
+    telaApp.style.display = "block";
+    await carregarResumoDoMes();
+    await carregarParcelamentos();
+  }
+
+  // ---------- Resumo do mês (saldo + por categoria) ----------
+  async function carregarResumoDoMes() {
+    const agora = new Date();
+    const ano = agora.getFullYear();
+    const mes = agora.getMonth() + 1; // 1-12
+    const prefixoMes = `${ano}-${String(mes).padStart(2, "0")}`;
+
+    const nomesMeses = ["janeiro","fevereiro","março","abril","maio","junho",
+      "julho","agosto","setembro","outubro","novembro","dezembro"];
+    document.getElementById("rotulo-mes").textContent = `${nomesMeses[mes - 1]} de ${ano}`;
+
+    const { data, error } = await supabaseClient
+      .from("lancamentos")
+      .select("valor, data_efetivacao, categorias(nome)")
+      .gte("data_efetivacao", `${prefixoMes}-01`)
+      .lt("data_efetivacao", proximoMesISO(ano, mes));
+
+    if (error) {
+      document.getElementById("lista-categorias").innerHTML =
+        `<div class="vazio">Não consegui carregar: ${error.message}</div>`;
+      return;
+    }
+
+    // separa o que conta como despesa do que fica de fora (entradas/reembolso)
+    const linhasDespesa = data.filter((linha) => {
+      const nomeCategoria = (linha.categorias?.nome || "").trim().toLowerCase();
+      return !CATEGORIAS_EXCLUIDAS_DO_TOTAL.includes(nomeCategoria);
+    });
+
+    const totalMes = linhasDespesa.reduce((soma, linha) => soma + Number(linha.valor), 0);
+    const elSaldo = document.getElementById("valor-saldo");
+    elSaldo.textContent = formatoMoeda(totalMes);
+    elSaldo.className = "saldo mono " + (totalMes > 0 ? "atencao" : "positivo");
+
+    // agrupa por categoria
+    const porCategoria = {};
+    for (const linha of linhasDespesa) {
+      const nome = linha.categorias?.nome || "Sem categoria";
+      porCategoria[nome] = (porCategoria[nome] || 0) + Number(linha.valor);
+    }
+    const listaOrdenada = Object.entries(porCategoria).sort((a, b) => b[1] - a[1]);
+    const maiorValor = listaOrdenada.length ? listaOrdenada[0][1] : 1;
+
+    const container = document.getElementById("lista-categorias");
+    if (!listaOrdenada.length) {
+      container.innerHTML = `<div class="vazio">Nenhum lançamento neste mês ainda.</div>`;
+      return;
+    }
+    container.innerHTML = listaOrdenada.map(([nome, valor]) => `
+      <div class="linha-categoria">
+        <div class="topo-linha">
+          <span class="nome">${escaparHtml(nome)}</span>
+          <span class="valor mono">${formatoMoeda(valor)}</span>
+        </div>
+        <div class="barra-fundo">
+          <div class="barra-preenchida" style="width:${Math.max(4, (valor / maiorValor) * 100)}%"></div>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  function proximoMesISO(ano, mes) {
+    const proximoMes = mes === 12 ? 1 : mes + 1;
+    const proximoAno = mes === 12 ? ano + 1 : ano;
+    return `${proximoAno}-${String(proximoMes).padStart(2, "0")}-01`;
+  }
+
+  // ---------- Parcelamentos futuros ----------
+  // Mesma logica do calculos.py: agrupa por descricao SEM o trecho
+  // "PARC X/Y" (pra nao contar a mesma compra duas vezes so' porque o
+  // numero da parcela mudou o texto), pega a ocorrencia mais recente de
+  // cada serie e calcula quanto ainda falta.
+  function descricaoBaseSerie(descricao) {
+    return (descricao || "").replace(/PARC\s+\d{1,2}\/\d{1,2}/, "PARC").trim();
+  }
+
+  async function carregarParcelamentos() {
+    const { data, error } = await supabaseClient
+      .from("lancamentos")
+      .select("descricao, parcela_atual, parcela_total, valor, data_efetivacao")
+      .not("parcela_total", "is", null)
+      .gt("parcela_total", 0)
+      .order("parcela_atual", { ascending: false });
+
+    const container = document.getElementById("lista-parcelamentos");
+
+    if (error) {
+      container.innerHTML = `<div class="vazio">Não consegui carregar: ${error.message}</div>`;
+      return;
+    }
+
+    const series = {};
+    for (const linha of data) {
+      const chave = `${descricaoBaseSerie(linha.descricao)}::${linha.parcela_total}`;
+      if (!series[chave]) {
+        series[chave] = {
+          descricao: linha.descricao,
+          parcela_atual: linha.parcela_atual,
+          parcela_total: linha.parcela_total,
+          valor_parcela: Number(linha.valor),
+        };
+      }
+    }
+
+    const linhas = Object.values(series)
+      .map((serie) => {
+        const restantes = serie.parcela_total - serie.parcela_atual;
+        return { ...serie, restantes, valor_restante: serie.valor_parcela * restantes };
+      })
+      .filter((serie) => serie.restantes > 0)
+      .sort((a, b) => b.valor_restante - a.valor_restante);
+
+    if (!linhas.length) {
+      container.innerHTML = `<div class="vazio">Nenhum parcelamento em aberto.</div>`;
+      return;
+    }
+
+    const totalRestante = linhas.reduce((soma, l) => soma + l.valor_restante, 0);
+
+    container.innerHTML = `
+      <div class="total-topo">
+        <span class="rotulo">Total parcelado pra frente</span>
+        <span class="valor mono">${formatoMoeda(totalRestante)}</span>
+      </div>
+    ` + linhas.map((l) => `
+      <div class="card-parcela">
+        <div class="linha1">
+          <span class="descricao">${escaparHtml(l.descricao)}</span>
+          <span class="valor-restante mono">${formatoMoeda(l.valor_restante)}</span>
+        </div>
+        <div class="detalhe">
+          <span>parcela ${l.parcela_atual}/${l.parcela_total} · ${l.restantes} restante${l.restantes > 1 ? "s" : ""}</span>
+          <span class="mono">${formatoMoeda(l.valor_parcela)}/mês</span>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  function escaparHtml(texto) {
+    const div = document.createElement("div");
+    div.textContent = texto || "";
+    return div.innerHTML;
+  }
+
+  // ---------- Mantém logado se já tinha sessão aberta ----------
+  (async () => {
+    const { data } = await supabaseClient.auth.getSession();
+    if (data.session) {
+      mostrarApp();
+    }
+  })();
+</script>
+
+</body>
+</html>
