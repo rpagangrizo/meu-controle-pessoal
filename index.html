@@ -22,7 +22,7 @@
     --hairline: rgba(241, 237, 226, 0.12);
   }
 
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
   html, body {
     margin: 0;
@@ -33,18 +33,10 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  body {
-    padding-bottom: 48px;
-  }
+  body { padding-bottom: 84px; }
 
-  .mono {
-    font-family: 'IBM Plex Mono', monospace;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .display {
-    font-family: 'Fraunces', serif;
-  }
+  .mono { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
+  .display { font-family: 'Fraunces', serif; }
 
   /* ---------- Login ---------- */
   #tela-login {
@@ -55,31 +47,14 @@
     align-items: center;
     padding: 32px 24px;
   }
-
   #tela-login .eyebrow {
-    color: var(--gold);
-    font-size: 12px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    margin-bottom: 6px;
+    color: var(--gold); font-size: 12px; letter-spacing: 0.14em;
+    text-transform: uppercase; margin-bottom: 6px;
   }
+  #tela-login h1 { font-size: 30px; font-weight: 600; margin: 0 0 32px 0; text-align: center; }
+  form#form-login { width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 14px; }
 
-  #tela-login h1 {
-    font-size: 30px;
-    font-weight: 600;
-    margin: 0 0 32px 0;
-    text-align: center;
-  }
-
-  form#form-login {
-    width: 100%;
-    max-width: 340px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-
-  input {
+  input, select {
     width: 100%;
     background: var(--card);
     border: 1px solid var(--hairline);
@@ -88,12 +63,19 @@
     color: var(--text);
     font-size: 16px;
     font-family: inherit;
+    appearance: none;
   }
+  input:focus, select:focus { outline: none; border-color: var(--gold); }
 
-  input:focus {
-    outline: none;
-    border-color: var(--gold);
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
   }
+  .campo { margin-bottom: 16px; }
 
   button {
     font-family: 'Inter', sans-serif;
@@ -104,21 +86,11 @@
     padding: 14px 16px;
     cursor: pointer;
   }
-
-  button.primario {
-    background: var(--gold);
-    color: #16241C;
-    margin-top: 6px;
-  }
-
+  button.primario { background: var(--gold); color: #16241C; margin-top: 6px; }
   button.primario:active { opacity: 0.85; }
+  button.primario:disabled { opacity: 0.5; }
 
-  #erro-login {
-    color: var(--coral);
-    font-size: 13px;
-    min-height: 18px;
-    text-align: center;
-  }
+  #erro-login { color: var(--coral); font-size: 13px; min-height: 18px; text-align: center; }
 
   /* ---------- App ---------- */
   #app { display: none; }
@@ -128,157 +100,88 @@
     border-bottom: 1px solid var(--hairline);
     position: relative;
   }
-
   header.topo .eyebrow {
-    color: var(--muted);
-    font-size: 12px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin-bottom: 10px;
+    color: var(--muted); font-size: 12px; letter-spacing: 0.1em;
+    text-transform: uppercase; margin-bottom: 10px;
   }
-
-  header.topo .saldo {
-    font-size: 44px;
-    font-weight: 600;
-    line-height: 1;
-  }
-
+  header.topo .saldo { font-size: 44px; font-weight: 600; line-height: 1; }
   header.topo .saldo.positivo { color: var(--text); }
   header.topo .saldo.atencao { color: var(--coral); }
-
-  header.topo .legenda {
-    color: var(--muted);
-    font-size: 13px;
-    margin-top: 8px;
-  }
+  header.topo .legenda { color: var(--muted); font-size: 13px; margin-top: 8px; }
 
   #btn-sair {
-    position: absolute;
-    top: 28px;
-    right: 20px;
-    background: transparent;
-    color: var(--muted);
-    font-size: 12px;
-    padding: 6px 10px;
-    border: 1px solid var(--hairline);
+    position: absolute; top: 28px; right: 20px;
+    background: transparent; color: var(--muted);
+    font-size: 12px; padding: 6px 10px; border: 1px solid var(--hairline);
   }
 
-  section {
-    padding: 24px 20px;
-    border-bottom: 1px solid var(--hairline);
-  }
+  /* cada aba e' uma "tela" separada - so uma visivel por vez */
+  .tela { display: none; }
+  .tela.ativa { display: block; }
 
-  section h2 {
-    font-family: 'Fraunces', serif;
-    font-weight: 600;
-    font-size: 19px;
-    margin: 0 0 4px 0;
-  }
+  section { padding: 24px 20px; }
+  section h2 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 19px; margin: 0 0 4px 0; }
+  section .sub { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
 
-  section .sub {
-    color: var(--muted);
-    font-size: 13px;
-    margin-bottom: 18px;
-  }
-
-  /* linha estilo talao de cheque: titulo + risquinho pontilhado + valor */
-  .linha-categoria {
-    margin-bottom: 16px;
-  }
-
+  .linha-categoria { margin-bottom: 16px; }
   .linha-categoria .topo-linha {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 6px;
+    display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;
   }
-
-  .linha-categoria .nome {
-    font-size: 14px;
-  }
-
-  .linha-categoria .valor {
-    font-size: 14px;
-  }
-
-  .barra-fundo {
-    height: 6px;
-    border-radius: 3px;
-    background: var(--card);
-    overflow: hidden;
-  }
-
-  .barra-preenchida {
-    height: 100%;
-    background: linear-gradient(90deg, var(--gold), var(--green));
-    border-radius: 3px;
-  }
+  .linha-categoria .nome { font-size: 14px; }
+  .linha-categoria .valor { font-size: 14px; }
+  .barra-fundo { height: 6px; border-radius: 3px; background: var(--card); overflow: hidden; }
+  .barra-preenchida { height: 100%; background: linear-gradient(90deg, var(--gold), var(--green)); border-radius: 3px; }
 
   .card-parcela {
-    background: var(--card);
-    border-radius: 12px;
-    padding: 14px 16px;
-    margin-bottom: 10px;
-    border: 1px solid var(--hairline);
+    background: var(--card); border-radius: 12px; padding: 14px 16px;
+    margin-bottom: 10px; border: 1px solid var(--hairline);
   }
-
-  .card-parcela .linha1 {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 6px;
-  }
-
-  .card-parcela .descricao {
-    font-size: 14px;
-    flex: 1;
-  }
-
-  .card-parcela .valor-restante {
-    font-size: 14px;
-    color: var(--gold);
-    white-space: nowrap;
-  }
-
-  .card-parcela .detalhe {
-    color: var(--muted);
-    font-size: 12px;
-    display: flex;
-    justify-content: space-between;
-  }
+  .card-parcela .linha1 { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .card-parcela .descricao { font-size: 14px; flex: 1; }
+  .card-parcela .valor-restante { font-size: 14px; color: var(--gold); white-space: nowrap; }
+  .card-parcela .detalhe { color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; }
 
   .total-topo {
+    display: flex; justify-content: space-between; align-items: baseline;
+    background: var(--card-raised); border-radius: 12px; padding: 14px 16px; margin-bottom: 18px;
+  }
+  .total-topo .rotulo { color: var(--muted); font-size: 13px; }
+  .total-topo .valor { font-size: 18px; color: var(--gold); }
+
+  .vazio { color: var(--muted); font-size: 13px; padding: 8px 0; }
+  .carregando { text-align: center; color: var(--muted); font-size: 13px; padding: 40px 0; }
+
+  /* ---------- Novo lançamento ---------- */
+  #mensagem-novo {
+    font-size: 13px; text-align: center; min-height: 18px; margin-top: 4px;
+  }
+  #mensagem-novo.sucesso { color: var(--green); }
+  #mensagem-novo.erro-msg { color: var(--coral); }
+
+  /* ---------- Navegação inferior ---------- */
+  nav.barra-inferior {
+    position: fixed; bottom: 0; left: 0; right: 0;
     display: flex;
-    justify-content: space-between;
-    align-items: baseline;
     background: var(--card-raised);
-    border-radius: 12px;
-    padding: 14px 16px;
-    margin-bottom: 18px;
+    border-top: 1px solid var(--hairline);
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)) 8px;
+    z-index: 10;
   }
-
-  .total-topo .rotulo {
+  nav.barra-inferior button {
+    flex: 1;
+    background: transparent;
+    border-radius: 10px;
+    padding: 10px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
     color: var(--muted);
-    font-size: 13px;
+    font-size: 11px;
+    font-weight: 500;
   }
-
-  .total-topo .valor {
-    font-size: 18px;
-    color: var(--gold);
-  }
-
-  .vazio {
-    color: var(--muted);
-    font-size: 13px;
-    padding: 8px 0;
-  }
-
-  .carregando {
-    text-align: center;
-    color: var(--muted);
-    font-size: 13px;
-    padding: 40px 0;
-  }
+  nav.barra-inferior button .icone { font-size: 20px; line-height: 1; }
+  nav.barra-inferior button.ativo { color: var(--gold); }
 </style>
 </head>
 <body>
@@ -304,21 +207,75 @@
       <div class="legenda">Total de despesas no mês, excluindo entradas e reembolsos</div>
     </header>
 
-    <section>
-      <h2>Por categoria</h2>
-      <div class="sub">Onde o dinheiro foi este mês</div>
-      <div id="lista-categorias">
-        <div class="carregando">Carregando…</div>
-      </div>
-    </section>
+    <!-- Tela 1: Início -->
+    <div class="tela ativa" id="tela-inicio">
+      <section>
+        <h2>Por categoria</h2>
+        <div class="sub">Onde o dinheiro foi este mês</div>
+        <div id="lista-categorias"><div class="carregando">Carregando…</div></div>
+      </section>
+    </div>
 
-    <section>
-      <h2>Parcelamentos futuros</h2>
-      <div class="sub">Quanto ainda falta pagar, a partir de hoje</div>
-      <div id="lista-parcelamentos">
-        <div class="carregando">Carregando…</div>
-      </div>
-    </section>
+    <!-- Tela 2: Parcelamentos -->
+    <div class="tela" id="tela-parcelamentos">
+      <section>
+        <h2>Parcelamentos futuros</h2>
+        <div class="sub">Quanto ainda falta pagar, a partir de hoje</div>
+        <div id="lista-parcelamentos"><div class="carregando">Carregando…</div></div>
+      </section>
+    </div>
+
+    <!-- Tela 3: Novo lançamento -->
+    <div class="tela" id="tela-novo">
+      <section>
+        <h2>Novo lançamento</h2>
+        <div class="sub">Gasto pontual do dia a dia (dinheiro, pix, débito)</div>
+
+        <form id="form-novo">
+          <div class="campo">
+            <label for="input-valor">Valor</label>
+            <input type="number" id="input-valor" inputmode="decimal" step="0.01" min="0" placeholder="0,00" required>
+          </div>
+          <div class="campo">
+            <label for="input-descricao">Descrição</label>
+            <input type="text" id="input-descricao" placeholder="Ex: mercado, padaria..." required>
+          </div>
+          <div class="campo">
+            <label for="select-categoria">Categoria</label>
+            <select id="select-categoria" required>
+              <option value="">Selecione…</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label for="select-subcategoria">Subcategoria (opcional)</label>
+            <select id="select-subcategoria">
+              <option value="">Nenhuma</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label for="input-data">Data</label>
+            <input type="date" id="input-data" required>
+          </div>
+          <div id="mensagem-novo"></div>
+          <button type="submit" class="primario" id="btn-salvar-novo">Salvar lançamento</button>
+        </form>
+      </section>
+    </div>
+
+    <nav class="barra-inferior">
+      <button data-tela="tela-inicio" class="ativo">
+        <span class="icone">◈</span>
+        <span>Início</span>
+      </button>
+      <button data-tela="tela-parcelamentos">
+        <span class="icone">▤</span>
+        <span>Parcelamentos</span>
+      </button>
+      <button data-tela="tela-novo">
+        <span class="icone">＋</span>
+        <span>Novo</span>
+      </button>
+    </nav>
   </div>
 
 <script>
@@ -331,6 +288,17 @@
 
   const formatoMoeda = (valor) =>
     (valor ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  // ---------- Navegação entre telas ----------
+  const botoesNav = document.querySelectorAll("nav.barra-inferior button");
+  botoesNav.forEach((botao) => {
+    botao.addEventListener("click", () => {
+      document.querySelectorAll(".tela").forEach((t) => t.classList.remove("ativa"));
+      document.getElementById(botao.dataset.tela).classList.add("ativa");
+      botoesNav.forEach((b) => b.classList.remove("ativo"));
+      botao.classList.add("ativo");
+    });
+  });
 
   // ---------- Login ----------
   const telaLogin = document.getElementById("tela-login");
@@ -348,7 +316,6 @@
 
     const email = document.getElementById("input-email").value.trim();
     const senha = document.getElementById("input-senha").value;
-
     const { error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
 
     btnEntrar.disabled = false;
@@ -371,13 +338,15 @@
     telaApp.style.display = "block";
     await carregarResumoDoMes();
     await carregarParcelamentos();
+    await carregarCategoriasNoFormulario();
+    document.getElementById("input-data").valueAsDate = new Date();
   }
 
   // ---------- Resumo do mês (saldo + por categoria) ----------
   async function carregarResumoDoMes() {
     const agora = new Date();
     const ano = agora.getFullYear();
-    const mes = agora.getMonth() + 1; // 1-12
+    const mes = agora.getMonth() + 1;
     const prefixoMes = `${ano}-${String(mes).padStart(2, "0")}`;
 
     const nomesMeses = ["janeiro","fevereiro","março","abril","maio","junho",
@@ -396,7 +365,6 @@
       return;
     }
 
-    // separa o que conta como despesa do que fica de fora (entradas/reembolso)
     const linhasDespesa = data.filter((linha) => {
       const nomeCategoria = (linha.categorias?.nome || "").trim().toLowerCase();
       return !CATEGORIAS_EXCLUIDAS_DO_TOTAL.includes(nomeCategoria);
@@ -407,7 +375,6 @@
     elSaldo.textContent = formatoMoeda(totalMes);
     elSaldo.className = "saldo mono " + (totalMes > 0 ? "atencao" : "positivo");
 
-    // agrupa por categoria
     const porCategoria = {};
     for (const linha of linhasDespesa) {
       const nome = linha.categorias?.nome || "Sem categoria";
@@ -441,10 +408,6 @@
   }
 
   // ---------- Parcelamentos futuros ----------
-  // Mesma logica do calculos.py: agrupa por descricao SEM o trecho
-  // "PARC X/Y" (pra nao contar a mesma compra duas vezes so' porque o
-  // numero da parcela mudou o texto), pega a ocorrencia mais recente de
-  // cada serie e calcula quanto ainda falta.
   function descricaoBaseSerie(descricao) {
     return (descricao || "").replace(/PARC\s+\d{1,2}\/\d{1,2}/, "PARC").trim();
   }
@@ -511,6 +474,80 @@
     `).join("");
   }
 
+  // ---------- Novo lançamento ----------
+  let categoriasCache = [];
+
+  async function carregarCategoriasNoFormulario() {
+    const { data, error } = await supabaseClient.from("categorias").select("id, nome").order("nome");
+    if (error) return;
+    categoriasCache = data;
+
+    const selectCategoria = document.getElementById("select-categoria");
+    selectCategoria.innerHTML = '<option value="">Selecione…</option>' +
+      data.map((c) => `<option value="${c.id}">${escaparHtml(c.nome)}</option>`).join("");
+  }
+
+  document.getElementById("select-categoria").addEventListener("change", async (evento) => {
+    const categoriaId = evento.target.value;
+    const selectSub = document.getElementById("select-subcategoria");
+    selectSub.innerHTML = '<option value="">Nenhuma</option>';
+    if (!categoriaId) return;
+
+    const { data, error } = await supabaseClient
+      .from("subcategorias")
+      .select("id, nome")
+      .eq("categoria_id", categoriaId)
+      .order("nome");
+    if (error || !data.length) return;
+
+    selectSub.innerHTML += data.map((s) => `<option value="${s.id}">${escaparHtml(s.nome)}</option>`).join("");
+  });
+
+  document.getElementById("form-novo").addEventListener("submit", async (evento) => {
+    evento.preventDefault();
+    const mensagem = document.getElementById("mensagem-novo");
+    const botaoSalvar = document.getElementById("btn-salvar-novo");
+    mensagem.textContent = "";
+    mensagem.className = "";
+    botaoSalvar.disabled = true;
+    botaoSalvar.textContent = "Salvando…";
+
+    const valor = parseFloat(document.getElementById("input-valor").value);
+    const descricao = document.getElementById("input-descricao").value.trim();
+    const categoriaId = document.getElementById("select-categoria").value || null;
+    const subcategoriaId = document.getElementById("select-subcategoria").value || null;
+    const data = document.getElementById("input-data").value;
+
+    const { error } = await supabaseClient.from("lancamentos").insert({
+      data_compra: data,
+      data_efetivacao: data,
+      categoria_id: categoriaId,
+      subcategoria_id: subcategoriaId,
+      descricao: descricao,
+      valor: valor,
+      status: "concluido",
+      origem: "app_mobile",
+      tipo: "dia_a_dia",
+    });
+
+    botaoSalvar.disabled = false;
+    botaoSalvar.textContent = "Salvar lançamento";
+
+    if (error) {
+      mensagem.textContent = "Não consegui salvar: " + error.message;
+      mensagem.className = "erro-msg";
+      return;
+    }
+
+    mensagem.textContent = "Lançamento salvo!";
+    mensagem.className = "sucesso";
+    document.getElementById("form-novo").reset();
+    document.getElementById("input-data").valueAsDate = new Date();
+
+    // atualiza os numeros do Inicio pra refletir o lancamento novo
+    carregarResumoDoMes();
+  });
+
   function escaparHtml(texto) {
     const div = document.createElement("div");
     div.textContent = texto || "";
@@ -520,9 +557,7 @@
   // ---------- Mantém logado se já tinha sessão aberta ----------
   (async () => {
     const { data } = await supabaseClient.auth.getSession();
-    if (data.session) {
-      mostrarApp();
-    }
+    if (data.session) mostrarApp();
   })();
 </script>
 
