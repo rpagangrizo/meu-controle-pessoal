@@ -122,8 +122,8 @@
   }
 
   .cards-resumo {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 12px;
     margin-top: 8px;
   }
@@ -684,15 +684,18 @@
     const proximoMes = proximoMesISO(anoDiaADia, mesDiaADia);
     const mostrarConcluidos = document.getElementById("checkbox-mostrar-concluidos").checked;
 
-    // total do mes conta TODOS os lancamentos dia a dia (independente do
-    // filtro "mostrar concluidos"), pra sempre refletir o total real gasto
+    // total do mes conta os lancamentos dia a dia, EXCLUINDO entradas e
+    // reembolso (mesma regra do card "A pagar"), pra nao inflar o numero
+    // com receita lancada como dia a dia
     const { data: dadosTotal } = await supabaseClient
       .from("lancamentos")
-      .select("valor")
+      .select("valor, categorias(nome)")
       .eq("tipo", "dia_a_dia")
       .gte("data_efetivacao", `${prefixoMes}-01`)
       .lt("data_efetivacao", proximoMes);
-    const totalDoMes = (dadosTotal || []).reduce((soma, l) => soma + Number(l.valor), 0);
+    const totalDoMes = (dadosTotal || [])
+      .filter((l) => !CATEGORIAS_EXCLUIDAS_DO_TOTAL.includes((l.categorias?.nome || "").trim().toLowerCase()))
+      .reduce((soma, l) => soma + Number(l.valor), 0);
     document.getElementById("valor-total-diaadia").textContent = formatoMoeda(totalDoMes);
 
     let consulta = supabaseClient
