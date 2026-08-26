@@ -847,7 +847,7 @@
         rendimentoMensal = saldoAtual - saldoAnterior - aporte + retirada;
       }
 
-      saldoAnterior = saldoAtual + aporte - retirada; // base pro proximo mes
+      saldoAnterior = saldoAtual + aporte; // base pro proximo mes (retirada NAO entra aqui - ver calculos.py)
     }
 
     document.getElementById("valor-investido").textContent = formatoMoeda(saldoAtualMaisRecente);
