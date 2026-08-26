@@ -833,6 +833,7 @@
     let valorInvestidoAcumulado = 0;
     let saldoAnterior = null;
     let rendimentoMensal = 0;
+    let saldoAtualMaisRecente = 0;
 
     for (const linha of data) {
       const saldoAtual = Number(linha.saldo_atual);
@@ -840,6 +841,7 @@
       const retirada = Number(linha.retirada) || 0;
 
       valorInvestidoAcumulado += aporte;
+      saldoAtualMaisRecente = saldoAtual;
 
       if (saldoAnterior !== null) {
         rendimentoMensal = saldoAtual - saldoAnterior - aporte + retirada;
@@ -848,7 +850,7 @@
       saldoAnterior = saldoAtual + aporte - retirada; // base pro proximo mes
     }
 
-    document.getElementById("valor-investido").textContent = formatoMoeda(valorInvestidoAcumulado);
+    document.getElementById("valor-investido").textContent = formatoMoeda(saldoAtualMaisRecente);
     const elRendimento = document.getElementById("valor-rendimento-mes");
     elRendimento.textContent = formatoMoeda(rendimentoMensal);
     elRendimento.className = "valor-card mono " + (rendimentoMensal >= 0 ? "verde" : "coral");
