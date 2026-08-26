@@ -405,12 +405,16 @@
         <div id="conteudo-investimentos">
           <div class="cards-resumo">
             <div class="card-resumo">
-              <div class="rotulo-card">Valor investido</div>
+              <div class="rotulo-card">Saldo atual</div>
               <div class="valor-card mono" id="valor-investido">R$ 0,00</div>
             </div>
             <div class="card-resumo">
-              <div class="rotulo-card">Rendimento no mês</div>
+              <div class="rotulo-card">Rendimento do mês</div>
               <div class="valor-card mono" id="valor-rendimento-mes">R$ 0,00</div>
+            </div>
+            <div class="card-resumo">
+              <div class="rotulo-card">Rendimento total</div>
+              <div class="valor-card mono" id="valor-rendimento-total">R$ 0,00</div>
             </div>
           </div>
         </div>
@@ -827,12 +831,14 @@
     if (error || !data || !data.length) {
       document.getElementById("valor-investido").textContent = formatoMoeda(0);
       document.getElementById("valor-rendimento-mes").textContent = formatoMoeda(0);
+      document.getElementById("valor-rendimento-total").textContent = formatoMoeda(0);
       return;
     }
 
     let valorInvestidoAcumulado = 0;
     let saldoAnterior = null;
     let rendimentoMensal = 0;
+    let rendimentoTotal = 0;
     let saldoAtualMaisRecente = 0;
 
     for (const linha of data) {
@@ -845,15 +851,21 @@
 
       if (saldoAnterior !== null) {
         rendimentoMensal = saldoAtual - saldoAnterior - aporte + retirada;
+        rendimentoTotal += rendimentoMensal;
       }
 
       saldoAnterior = saldoAtual + aporte; // base pro proximo mes (retirada NAO entra aqui - ver calculos.py)
     }
 
     document.getElementById("valor-investido").textContent = formatoMoeda(saldoAtualMaisRecente);
+
     const elRendimento = document.getElementById("valor-rendimento-mes");
     elRendimento.textContent = formatoMoeda(rendimentoMensal);
     elRendimento.className = "valor-card mono " + (rendimentoMensal >= 0 ? "verde" : "coral");
+
+    const elRendimentoTotal = document.getElementById("valor-rendimento-total");
+    elRendimentoTotal.textContent = formatoMoeda(rendimentoTotal);
+    elRendimentoTotal.className = "valor-card mono " + (rendimentoTotal >= 0 ? "verde" : "coral");
   }
 
   // ---------- Novo lançamento ----------
