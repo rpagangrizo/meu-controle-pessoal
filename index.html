@@ -37,9 +37,10 @@
     color: var(--text);
     font-family: 'Inter', sans-serif;
     -webkit-font-smoothing: antialiased;
+    height: 100%;
   }
 
-  body { padding-bottom: 84px; }
+  body { min-height: 100dvh; }
 
   .mono { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
   .display { font-family: 'Fraunces', serif; }
@@ -104,7 +105,16 @@
   #erro-login { color: var(--coral); font-size: 13px; min-height: 18px; text-align: center; }
 
   /* ---------- App ---------- */
-  #app { display: none; }
+  #app {
+    display: none;
+    flex-direction: column;
+    min-height: 100dvh;
+  }
+  .conteudo-abas {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 
   header.topo-mini {
     padding: calc(16px + env(safe-area-inset-top, 0px)) 20px 14px 20px;
@@ -112,6 +122,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-shrink: 0;
   }
   header.topo-mini .titulo-app { font-size: 17px; font-weight: 600; }
 
@@ -282,12 +293,11 @@
 
   /* ---------- Navegação inferior ---------- */
   nav.barra-inferior {
-    position: fixed; bottom: 0; left: 0; right: 0;
     display: flex;
     background: var(--card-raised);
     border-top: 1px solid var(--hairline);
     padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)) 8px;
-    z-index: 10;
+    flex-shrink: 0;
   }
   nav.barra-inferior button {
     flex: 1;
@@ -327,6 +337,7 @@
       <button id="btn-sair">Sair</button>
     </header>
 
+    <div class="conteudo-abas">
     <!-- Tela 1: Início -->
     <div class="tela ativa" id="tela-inicio">
       <section>
@@ -384,7 +395,27 @@
       </section>
     </div>
 
-    <!-- Tela 5: Novo lançamento -->
+    <!-- Tela 5: Investimentos -->
+    <div class="tela" id="tela-investimentos">
+      <section>
+        <h2>Investimentos</h2>
+        <div class="sub">Posição mais recente</div>
+        <div id="conteudo-investimentos">
+          <div class="cards-resumo">
+            <div class="card-resumo">
+              <div class="rotulo-card">Valor investido</div>
+              <div class="valor-card mono" id="valor-investido">R$ 0,00</div>
+            </div>
+            <div class="card-resumo">
+              <div class="rotulo-card">Rendimento no mês</div>
+              <div class="valor-card mono" id="valor-rendimento-mes">R$ 0,00</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Tela 6: Novo lançamento -->
     <div class="tela" id="tela-novo">
       <section>
         <h2>Novo lançamento</h2>
@@ -429,6 +460,8 @@
       </section>
     </div>
 
+    </div>
+
     <nav class="barra-inferior">
       <button data-tela="tela-inicio" class="ativo">
         <span class="icone">◈</span>
@@ -445,6 +478,10 @@
       <button data-tela="tela-parcelamentos">
         <span class="icone">▤</span>
         <span>Parcelamentos</span>
+      </button>
+      <button data-tela="tela-investimentos">
+        <span class="icone">△</span>
+        <span>Invest.</span>
       </button>
       <button data-tela="tela-novo">
         <span class="icone">＋</span>
@@ -514,10 +551,11 @@
 
   async function mostrarApp() {
     telaLogin.style.display = "none";
-    telaApp.style.display = "block";
+    telaApp.style.display = "flex";
     await carregarResumoDoMes();
     await carregarDiaADia();
     await carregarParcelamentos();
+    await carregarInvestimentos();
     await carregarCategoriasNoFormulario();
     document.getElementById("input-data").valueAsDate = new Date();
   }
@@ -770,6 +808,48 @@
   function formatarDataCurta(dataIso) {
     const [ano, mes, dia] = dataIso.split("-");
     return `${dia}/${mes}`;
+  }
+
+  // ---------- Investimentos ----------
+  // Mesma formula do desktop (calculos.py):
+  //   Valor investido   = soma acumulada de todos os aportes
+  //   Rendimento mensal = saldo_atual - saldo_anterior - aporte + retirada
+  // (calculado linha a linha, em ordem de data, pra pegar o rendimento
+  // do mes mais recente)
+  async function carregarInvestimentos() {
+    const { data, error } = await supabaseClient
+      .from("investimentos")
+      .select("data, saldo_atual, aporte, retirada")
+      .order("data");
+
+    if (error || !data || !data.length) {
+      document.getElementById("valor-investido").textContent = formatoMoeda(0);
+      document.getElementById("valor-rendimento-mes").textContent = formatoMoeda(0);
+      return;
+    }
+
+    let valorInvestidoAcumulado = 0;
+    let saldoAnterior = null;
+    let rendimentoMensal = 0;
+
+    for (const linha of data) {
+      const saldoAtual = Number(linha.saldo_atual);
+      const aporte = Number(linha.aporte) || 0;
+      const retirada = Number(linha.retirada) || 0;
+
+      valorInvestidoAcumulado += aporte;
+
+      if (saldoAnterior !== null) {
+        rendimentoMensal = saldoAtual - saldoAnterior - aporte + retirada;
+      }
+
+      saldoAnterior = saldoAtual + aporte - retirada; // base pro proximo mes
+    }
+
+    document.getElementById("valor-investido").textContent = formatoMoeda(valorInvestidoAcumulado);
+    const elRendimento = document.getElementById("valor-rendimento-mes");
+    elRendimento.textContent = formatoMoeda(rendimentoMensal);
+    elRendimento.className = "valor-card mono " + (rendimentoMensal >= 0 ? "verde" : "coral");
   }
 
   // ---------- Novo lançamento ----------
