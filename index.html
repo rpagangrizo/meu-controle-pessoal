@@ -293,6 +293,14 @@
   #mensagem-novo.sucesso { color: var(--green); }
   #mensagem-novo.erro-msg { color: var(--coral); }
 
+  .dica-parcelamento {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+  .dica-parcelamento b { color: var(--gold); }
+
   /* ---------- Navegação inferior ---------- */
   nav.barra-inferior {
     display: flex;
@@ -429,7 +437,7 @@
 
         <form id="form-novo">
           <div class="campo">
-            <label for="input-valor">Valor</label>
+            <label for="input-valor" id="rotulo-valor">Valor</label>
             <input type="number" id="input-valor" inputmode="decimal" step="0.01" min="0" placeholder="0,00" required>
           </div>
           <div class="campo">
@@ -449,10 +457,19 @@
             </select>
           </div>
           <div class="campo">
-            <label for="input-data">Data</label>
+            <label for="input-data">Data da compra</label>
             <input type="date" id="input-data" required>
           </div>
-          <div class="campo">
+          <label class="toggle-concluidos">
+            <input type="checkbox" id="checkbox-parcelado">
+            <span>Compra parcelada no cartão</span>
+          </label>
+          <div class="campo" id="campo-parcelas" style="display:none;">
+            <label for="input-parcelas">Em quantas vezes?</label>
+            <input type="number" id="input-parcelas" inputmode="numeric" min="2" max="24" step="1" placeholder="Ex: 4">
+            <div class="dica-parcelamento" id="dica-parcelamento"></div>
+          </div>
+          <div class="campo" id="campo-status-novo">
             <label for="select-status-novo">Status</label>
             <select id="select-status-novo">
               <option value="pendente" selected>Pendente</option>
@@ -897,6 +914,62 @@
     selectSub.innerHTML += data.map((s) => `<option value="${s.id}">${escaparHtml(s.nome)}</option>`).join("");
   });
 
+  // ---------- Parcelamento (fechamento dia 10, vencimento dia 20) ----------
+  const DIA_FECHAMENTO = 10;
+  const DIA_VENCIMENTO = 20;
+
+  function calcularPrimeiraFatura(dataCompraISO) {
+    const [ano, mes, dia] = dataCompraISO.split("-").map(Number);
+    // compra ate' o dia do fechamento entra na fatura que fecha nesse
+    // mes; depois do fechamento, pula pra fatura do mes seguinte
+    let anoFatura = ano;
+    let mesFatura = dia <= DIA_FECHAMENTO ? mes : mes + 1;
+    if (mesFatura > 12) { mesFatura = 1; anoFatura += 1; }
+    return { ano: anoFatura, mes: mesFatura };
+  }
+
+  function somarMeses(ano, mes, quantidade) {
+    const indice = (mes - 1) + quantidade;
+    const anoResultado = ano + Math.floor(indice / 12);
+    const mesResultado = (indice % 12) + 1;
+    return { ano: anoResultado, mes: mesResultado };
+  }
+
+  function dataVencimentoISO(ano, mes) {
+    return `${ano}-${String(mes).padStart(2, "0")}-${String(DIA_VENCIMENTO).padStart(2, "0")}`;
+  }
+
+  const checkboxParcelado = document.getElementById("checkbox-parcelado");
+  const campoParcelas = document.getElementById("campo-parcelas");
+  const inputParcelas = document.getElementById("input-parcelas");
+  const campoStatusNovo = document.getElementById("campo-status-novo");
+  const rotuloValor = document.getElementById("rotulo-valor");
+  const dicaParcelamento = document.getElementById("dica-parcelamento");
+
+  function atualizarDicaParcelamento() {
+    const dataCompra = document.getElementById("input-data").value;
+    const parcelas = parseInt(inputParcelas.value, 10);
+    if (!dataCompra || !parcelas || parcelas < 2) {
+      dicaParcelamento.textContent = "";
+      return;
+    }
+    const primeira = calcularPrimeiraFatura(dataCompra);
+    const ultima = somarMeses(primeira.ano, primeira.mes, parcelas - 1);
+    dicaParcelamento.innerHTML =
+      `1ª parcela vence em <b>${String(DIA_VENCIMENTO).padStart(2, "0")}/${String(primeira.mes).padStart(2, "0")}/${primeira.ano}</b>, ` +
+      `última em <b>${String(DIA_VENCIMENTO).padStart(2, "0")}/${String(ultima.mes).padStart(2, "0")}/${ultima.ano}</b>.`;
+  }
+
+  checkboxParcelado.addEventListener("change", () => {
+    const parcelado = checkboxParcelado.checked;
+    campoParcelas.style.display = parcelado ? "block" : "none";
+    campoStatusNovo.style.display = parcelado ? "none" : "block";
+    rotuloValor.textContent = parcelado ? "Valor total da compra" : "Valor";
+    if (!parcelado) { dicaParcelamento.textContent = ""; inputParcelas.value = ""; }
+  });
+  inputParcelas.addEventListener("input", atualizarDicaParcelamento);
+  document.getElementById("input-data").addEventListener("change", atualizarDicaParcelamento);
+
   document.getElementById("form-novo").addEventListener("submit", async (evento) => {
     evento.preventDefault();
     const mensagem = document.getElementById("mensagem-novo");
@@ -911,19 +984,59 @@
     const categoriaId = document.getElementById("select-categoria").value || null;
     const subcategoriaId = document.getElementById("select-subcategoria").value || null;
     const data = document.getElementById("input-data").value;
-    const status = document.getElementById("select-status-novo").value;
+    const parcelado = checkboxParcelado.checked;
+    const numeroParcelas = parcelado ? parseInt(inputParcelas.value, 10) : 1;
 
-    const { error } = await supabaseClient.from("lancamentos").insert({
-      data_compra: data,
-      data_efetivacao: data,
-      categoria_id: categoriaId,
-      subcategoria_id: subcategoriaId,
-      descricao: descricao,
-      valor: valor,
-      status: status,
-      origem: "app_mobile",
-      tipo: "dia_a_dia",
-    });
+    if (parcelado && (!numeroParcelas || numeroParcelas < 2)) {
+      mensagem.textContent = "Informe em quantas parcelas (mínimo 2).";
+      mensagem.className = "erro-msg";
+      botaoSalvar.disabled = false;
+      botaoSalvar.textContent = "Salvar lançamento";
+      return;
+    }
+
+    let error;
+
+    if (parcelado) {
+      // divide o valor total em partes iguais, ajustando centavos na
+      // ultima parcela pra nao perder nem sobrar dinheiro no total
+      const valorParcelaBase = Math.floor((valor / numeroParcelas) * 100) / 100;
+      const somaParcelasBase = valorParcelaBase * (numeroParcelas - 1);
+      const valorUltimaParcela = Math.round((valor - somaParcelasBase) * 100) / 100;
+
+      const primeira = calcularPrimeiraFatura(data);
+      const linhas = [];
+      for (let i = 1; i <= numeroParcelas; i++) {
+        const { ano, mes } = somarMeses(primeira.ano, primeira.mes, i - 1);
+        linhas.push({
+          data_compra: data,
+          data_efetivacao: dataVencimentoISO(ano, mes),
+          categoria_id: categoriaId,
+          subcategoria_id: subcategoriaId,
+          descricao: `${descricao} PARC ${i}/${numeroParcelas}`,
+          valor: i < numeroParcelas ? valorParcelaBase : valorUltimaParcela,
+          status: "pendente",
+          origem: "app_mobile",
+          tipo: "cartao",
+          parcela_atual: i,
+          parcela_total: numeroParcelas,
+        });
+      }
+      ({ error } = await supabaseClient.from("lancamentos").insert(linhas));
+    } else {
+      const status = document.getElementById("select-status-novo").value;
+      ({ error } = await supabaseClient.from("lancamentos").insert({
+        data_compra: data,
+        data_efetivacao: data,
+        categoria_id: categoriaId,
+        subcategoria_id: subcategoriaId,
+        descricao: descricao,
+        valor: valor,
+        status: status,
+        origem: "app_mobile",
+        tipo: "dia_a_dia",
+      }));
+    }
 
     botaoSalvar.disabled = false;
     botaoSalvar.textContent = "Salvar lançamento";
@@ -934,14 +1047,22 @@
       return;
     }
 
-    mensagem.textContent = "Lançamento salvo!";
+    mensagem.textContent = parcelado
+      ? `Compra parcelada em ${numeroParcelas}x salva!`
+      : "Lançamento salvo!";
     mensagem.className = "sucesso";
     document.getElementById("form-novo").reset();
     document.getElementById("input-data").valueAsDate = new Date();
+    campoParcelas.style.display = "none";
+    campoStatusNovo.style.display = "block";
+    rotuloValor.textContent = "Valor";
+    dicaParcelamento.textContent = "";
 
-    // atualiza os numeros do Inicio e a lista do Dia a dia pra refletir o lancamento novo
+    // atualiza os numeros do Inicio, a lista do Dia a dia e os
+    // parcelamentos (uma compra parcelada nova afeta essa tela tambem)
     carregarResumoDoMes();
     carregarDiaADia();
+    carregarParcelamentos();
   });
 
   function escaparHtml(texto) {
