@@ -1042,18 +1042,32 @@
     mensagemScan.textContent = "";
     mensagemScan.className = "";
 
+    // mostra a tela JA, antes de pedir a camera - assim da' pra ver que
+    // pelo menos essa parte funcionou, mesmo se a camera falhar depois
+    overlayScanner.classList.add("ativo");
+    statusScanner.textContent = "Solicitando acesso à câmera…";
+
     try {
       streamCamera = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" },
       });
     } catch (erro) {
-      mensagemScan.textContent = "Não consegui acessar a câmera. Confira as permissões do navegador.";
+      overlayScanner.classList.remove("ativo");
+      mensagemScan.textContent = "Não consegui acessar a câmera: " + erro.message;
       mensagemScan.className = "erro-msg";
       return;
     }
 
     videoScanner.srcObject = streamCamera;
-    overlayScanner.classList.add("ativo");
+    try {
+      await videoScanner.play();
+    } catch (erroPlay) {
+      // alguns navegadores bloqueiam o play() automatico - tenta de novo
+      // com um toque na tela do proprio scanner
+      statusScanner.textContent = "Toque na tela pra ativar a câmera";
+      videoScanner.addEventListener("click", () => videoScanner.play(), { once: true });
+    }
+
     statusScanner.textContent = "Procurando QR Code…";
     scanEmAndamento = true;
     requestAnimationFrame(loopScanner);
