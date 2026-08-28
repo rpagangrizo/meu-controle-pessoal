@@ -579,6 +579,17 @@
     </nav>
   </div>
 
+  <!-- ===== Overlay da câmera (escaneamento de QR) ===== -->
+  <div id="overlay-scanner">
+    <div class="topo-scanner">
+      <span>Aponte para o QR Code da nota</span>
+      <button type="button" id="btn-fechar-scanner">✕</button>
+    </div>
+    <video id="video-scanner" playsinline autoplay muted></video>
+    <canvas id="canvas-scanner" style="display:none;"></canvas>
+    <div id="status-scanner" class="status-scanner"></div>
+  </div>
+
 <script>
   // ---------- Configuração do Supabase (projeto separado do DRAM) ----------
   const SUPABASE_URL = "https://zwufaoortnwyvxowldkf.supabase.co";
@@ -1274,17 +1285,6 @@
     if (data.session) mostrarApp();
   })();
 </script>
-
-  <!-- ===== Overlay da câmera (escaneamento de QR) ===== -->
-  <div id="overlay-scanner">
-    <div class="topo-scanner">
-      <span>Aponte para o QR Code da nota</span>
-      <button type="button" id="btn-fechar-scanner">✕</button>
-    </div>
-    <video id="video-scanner" playsinline autoplay muted></video>
-    <canvas id="canvas-scanner" style="display:none;"></canvas>
-    <div id="status-scanner" class="status-scanner"></div>
-  </div>
 
 </body>
 </html>
