@@ -1034,13 +1034,30 @@
   let streamCamera = null;
   let scanEmAndamento = false;
 
-  document.getElementById("btn-escanear").addEventListener("click", abrirScanner);
+  document.getElementById("btn-escanear").addEventListener("click", async () => {
+    const botao = document.getElementById("btn-escanear");
+    botao.textContent = "Abrindo câmera…";
+    try {
+      await abrirScanner();
+    } catch (erroInesperado) {
+      alert("Erro ao abrir o scanner:\n" + erroInesperado.message + "\n\n" + erroInesperado.stack);
+    } finally {
+      botao.innerHTML = '<span class="icone">📷</span> Escanear nota (QR Code)';
+    }
+  });
   document.getElementById("btn-fechar-scanner").addEventListener("click", fecharScanner);
 
   async function abrirScanner() {
     const mensagemScan = document.getElementById("mensagem-scan");
     mensagemScan.textContent = "";
     mensagemScan.className = "";
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      mensagemScan.textContent =
+        "Esse navegador não suporta câmera aqui (confira se o site abriu com https://).";
+      mensagemScan.className = "erro-msg";
+      return;
+    }
 
     // mostra a tela JA, antes de pedir a camera - assim da' pra ver que
     // pelo menos essa parte funcionou, mesmo se a camera falhar depois
