@@ -15,6 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <style>
   :root {
     --bg: #14231C;
@@ -301,6 +302,67 @@
   }
   .dica-parcelamento b { color: var(--gold); }
 
+  button.botao-escanear {
+    width: 100%;
+    background: var(--card-raised);
+    border: 1px dashed var(--gold);
+    color: var(--gold);
+    font-size: 14px;
+    padding: 14px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  #mensagem-scan {
+    font-size: 13px; text-align: center; min-height: 16px; margin: -8px 0 16px 0;
+  }
+  #mensagem-scan.sucesso { color: var(--green); }
+  #mensagem-scan.erro-msg { color: var(--coral); }
+
+  #overlay-scanner {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 100;
+    flex-direction: column;
+  }
+  #overlay-scanner.ativo { display: flex; }
+  .topo-scanner {
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 16px 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #fff;
+    background: rgba(0,0,0,0.6);
+    font-size: 14px;
+  }
+  .topo-scanner button {
+    background: transparent;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+  }
+  #video-scanner {
+    flex: 1;
+    width: 100%;
+    object-fit: cover;
+  }
+  .status-scanner {
+    padding: 16px;
+    text-align: center;
+    color: #fff;
+    background: rgba(0,0,0,0.6);
+    font-size: 14px;
+    min-height: 20px;
+  }
+
   /* ---------- Navegação inferior ---------- */
   nav.barra-inferior {
     display: flex;
@@ -436,6 +498,10 @@
         <div class="sub">Gasto pontual do dia a dia (dinheiro, pix, débito)</div>
 
         <form id="form-novo">
+          <button type="button" id="btn-escanear" class="botao-escanear">
+            <span class="icone">📷</span> Escanear nota (QR Code)
+          </button>
+          <div id="mensagem-scan"></div>
           <div class="campo">
             <label for="input-valor" id="rotulo-valor">Valor</label>
             <input type="number" id="input-valor" inputmode="decimal" step="0.01" min="0" placeholder="0,00" required>
@@ -960,6 +1026,106 @@
       `última em <b>${String(DIA_VENCIMENTO).padStart(2, "0")}/${String(ultima.mes).padStart(2, "0")}/${ultima.ano}</b>.`;
   }
 
+  // ---------- Escanear nota (QR Code) ----------
+  const overlayScanner = document.getElementById("overlay-scanner");
+  const videoScanner = document.getElementById("video-scanner");
+  const canvasScanner = document.getElementById("canvas-scanner");
+  const statusScanner = document.getElementById("status-scanner");
+  let streamCamera = null;
+  let scanEmAndamento = false;
+
+  document.getElementById("btn-escanear").addEventListener("click", abrirScanner);
+  document.getElementById("btn-fechar-scanner").addEventListener("click", fecharScanner);
+
+  async function abrirScanner() {
+    const mensagemScan = document.getElementById("mensagem-scan");
+    mensagemScan.textContent = "";
+    mensagemScan.className = "";
+
+    try {
+      streamCamera = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      });
+    } catch (erro) {
+      mensagemScan.textContent = "Não consegui acessar a câmera. Confira as permissões do navegador.";
+      mensagemScan.className = "erro-msg";
+      return;
+    }
+
+    videoScanner.srcObject = streamCamera;
+    overlayScanner.classList.add("ativo");
+    statusScanner.textContent = "Procurando QR Code…";
+    scanEmAndamento = true;
+    requestAnimationFrame(loopScanner);
+  }
+
+  function fecharScanner() {
+    scanEmAndamento = false;
+    overlayScanner.classList.remove("ativo");
+    if (streamCamera) {
+      streamCamera.getTracks().forEach((faixa) => faixa.stop());
+      streamCamera = null;
+    }
+  }
+
+  function loopScanner() {
+    if (!scanEmAndamento) return;
+
+    if (videoScanner.readyState === videoScanner.HAVE_ENOUGH_DATA) {
+      canvasScanner.width = videoScanner.videoWidth;
+      canvasScanner.height = videoScanner.videoHeight;
+      const contexto = canvasScanner.getContext("2d");
+      contexto.drawImage(videoScanner, 0, 0, canvasScanner.width, canvasScanner.height);
+      const imagem = contexto.getImageData(0, 0, canvasScanner.width, canvasScanner.height);
+      const resultado = jsQR(imagem.data, imagem.width, imagem.height);
+
+      if (resultado && resultado.data) {
+        scanEmAndamento = false;
+        statusScanner.textContent = "QR Code encontrado! Buscando dados…";
+        processarQrEncontrado(resultado.data);
+        return;
+      }
+    }
+    requestAnimationFrame(loopScanner);
+  }
+
+  async function processarQrEncontrado(urlQr) {
+    const mensagemScan = document.getElementById("mensagem-scan");
+
+    try {
+      const resposta = await fetch(`${SUPABASE_URL}/functions/v1/buscar-nfce`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+        },
+        body: JSON.stringify({ url: urlQr }),
+      });
+      const dados = await resposta.json();
+
+      fecharScanner();
+
+      if (dados.erro || !dados.encontrou_algo) {
+        mensagemScan.textContent =
+          "Não consegui ler os dados da nota automaticamente. Preencha manualmente abaixo.";
+        mensagemScan.className = "erro-msg";
+        return;
+      }
+
+      if (dados.valor) document.getElementById("input-valor").value = dados.valor;
+      if (dados.estabelecimento) document.getElementById("input-descricao").value = dados.estabelecimento;
+      if (dados.data) document.getElementById("input-data").value = dados.data;
+
+      mensagemScan.textContent = "Dados preenchidos! Confere e ajusta o que precisar antes de salvar.";
+      mensagemScan.className = "sucesso";
+    } catch (erro) {
+      fecharScanner();
+      mensagemScan.textContent = "Não consegui buscar os dados da nota. Preencha manualmente abaixo.";
+      mensagemScan.className = "erro-msg";
+    }
+  }
+
   checkboxParcelado.addEventListener("change", () => {
     const parcelado = checkboxParcelado.checked;
     campoParcelas.style.display = parcelado ? "block" : "none";
@@ -1077,6 +1243,17 @@
     if (data.session) mostrarApp();
   })();
 </script>
+
+  <!-- ===== Overlay da câmera (escaneamento de QR) ===== -->
+  <div id="overlay-scanner">
+    <div class="topo-scanner">
+      <span>Aponte para o QR Code da nota</span>
+      <button type="button" id="btn-fechar-scanner">✕</button>
+    </div>
+    <video id="video-scanner" playsinline autoplay muted></video>
+    <canvas id="canvas-scanner" style="display:none;"></canvas>
+    <div id="status-scanner" class="status-scanner"></div>
+  </div>
 
 </body>
 </html>
