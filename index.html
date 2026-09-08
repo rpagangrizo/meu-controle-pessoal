@@ -495,7 +495,7 @@
     <div class="tela" id="tela-novo">
       <section>
         <h2>Novo lançamento</h2>
-        <div class="sub">Gasto pontual do dia a dia (dinheiro, pix, débito)</div>
+        <div class="sub">Toda compra vai pro cartão — a fatura certa é calculada sozinha</div>
 
         <form id="form-novo">
           <button type="button" id="btn-escanear" class="botao-escanear">
@@ -503,7 +503,7 @@
           </button>
           <div id="mensagem-scan"></div>
           <div class="campo">
-            <label for="input-valor" id="rotulo-valor">Valor</label>
+            <label for="input-valor" id="rotulo-valor">Valor total da compra</label>
             <input type="number" id="input-valor" inputmode="decimal" step="0.01" min="0" placeholder="0,00" required>
           </div>
           <div class="campo">
@@ -526,22 +526,10 @@
             <label for="input-data">Data da compra</label>
             <input type="date" id="input-data" required>
           </div>
-          <label class="toggle-concluidos">
-            <input type="checkbox" id="checkbox-parcelado">
-            <span>Compra parcelada no cartão</span>
-          </label>
-          <div class="campo" id="campo-parcelas" style="display:none;">
+          <div class="campo">
             <label for="input-parcelas">Em quantas vezes?</label>
-            <input type="number" id="input-parcelas" inputmode="numeric" min="2" max="24" step="1" placeholder="Ex: 4">
+            <input type="number" id="input-parcelas" inputmode="numeric" min="1" max="24" step="1" value="1">
             <div class="dica-parcelamento" id="dica-parcelamento"></div>
-          </div>
-          <div class="campo" id="campo-status-novo">
-            <label for="select-status-novo">Status</label>
-            <select id="select-status-novo">
-              <option value="pendente" selected>Pendente</option>
-              <option value="agendado">Agendado</option>
-              <option value="concluido">Concluído</option>
-            </select>
           </div>
           <div id="mensagem-novo"></div>
           <button type="submit" class="primario" id="btn-salvar-novo">Salvar lançamento</button>
@@ -658,6 +646,7 @@
     await carregarInvestimentos();
     await carregarCategoriasNoFormulario();
     document.getElementById("input-data").valueAsDate = new Date();
+    atualizarDicaParcelamento();
   }
 
   // ---------- Resumo do mês (saldo + por categoria) ----------
@@ -912,10 +901,9 @@
 
   // ---------- Investimentos ----------
   // Mesma formula do desktop (calculos.py):
-  //   Valor investido   = soma acumulada de todos os aportes
-  //   Rendimento mensal = saldo_atual - saldo_anterior - aporte + retirada
-  // (calculado linha a linha, em ordem de data, pra pegar o rendimento
-  // do mes mais recente)
+  //   Saldo atual        = saldo_atual da linha mais recente
+  //   Rendimento mensal   = saldo_atual - saldo_anterior - aporte + retirada
+  //   (calculado linha a linha, em ordem de data)
   async function carregarInvestimentos() {
     const { data, error } = await supabaseClient
       .from("investimentos")
@@ -929,7 +917,6 @@
       return;
     }
 
-    let valorInvestidoAcumulado = 0;
     let saldoAnterior = null;
     let rendimentoMensal = 0;
     let rendimentoTotal = 0;
@@ -940,7 +927,6 @@
       const aporte = Number(linha.aporte) || 0;
       const retirada = Number(linha.retirada) || 0;
 
-      valorInvestidoAcumulado += aporte;
       saldoAtualMaisRecente = saldoAtual;
 
       if (saldoAnterior !== null) {
@@ -991,7 +977,9 @@
     selectSub.innerHTML += data.map((s) => `<option value="${s.id}">${escaparHtml(s.nome)}</option>`).join("");
   });
 
-  // ---------- Parcelamento (fechamento dia 10, vencimento dia 20) ----------
+  // ---------- Cálculo da fatura (fechamento dia 10, vencimento dia 20) ----------
+  // TODO lancamento do celular e' cartao - inclusive compra a vista (1x)
+  // precisa cair na fatura certa, nao no dia da compra.
   const DIA_FECHAMENTO = 10;
   const DIA_VENCIMENTO = 20;
 
@@ -1016,26 +1004,29 @@
     return `${ano}-${String(mes).padStart(2, "0")}-${String(DIA_VENCIMENTO).padStart(2, "0")}`;
   }
 
-  const checkboxParcelado = document.getElementById("checkbox-parcelado");
-  const campoParcelas = document.getElementById("campo-parcelas");
   const inputParcelas = document.getElementById("input-parcelas");
-  const campoStatusNovo = document.getElementById("campo-status-novo");
-  const rotuloValor = document.getElementById("rotulo-valor");
   const dicaParcelamento = document.getElementById("dica-parcelamento");
 
   function atualizarDicaParcelamento() {
     const dataCompra = document.getElementById("input-data").value;
-    const parcelas = parseInt(inputParcelas.value, 10);
-    if (!dataCompra || !parcelas || parcelas < 2) {
+    const parcelas = parseInt(inputParcelas.value, 10) || 1;
+    if (!dataCompra) {
       dicaParcelamento.textContent = "";
       return;
     }
     const primeira = calcularPrimeiraFatura(dataCompra);
+    if (parcelas <= 1) {
+      dicaParcelamento.innerHTML =
+        `Entra na fatura que vence em <b>${String(DIA_VENCIMENTO).padStart(2, "0")}/${String(primeira.mes).padStart(2, "0")}/${primeira.ano}</b>.`;
+      return;
+    }
     const ultima = somarMeses(primeira.ano, primeira.mes, parcelas - 1);
     dicaParcelamento.innerHTML =
       `1ª parcela vence em <b>${String(DIA_VENCIMENTO).padStart(2, "0")}/${String(primeira.mes).padStart(2, "0")}/${primeira.ano}</b>, ` +
       `última em <b>${String(DIA_VENCIMENTO).padStart(2, "0")}/${String(ultima.mes).padStart(2, "0")}/${ultima.ano}</b>.`;
   }
+  inputParcelas.addEventListener("input", atualizarDicaParcelamento);
+  document.getElementById("input-data").addEventListener("change", atualizarDicaParcelamento);
 
   // ---------- Escanear nota (QR Code) ----------
   const overlayScanner = document.getElementById("overlay-scanner");
@@ -1158,6 +1149,7 @@
       if (dados.valor) document.getElementById("input-valor").value = dados.valor;
       if (dados.estabelecimento) document.getElementById("input-descricao").value = dados.estabelecimento;
       if (dados.data) document.getElementById("input-data").value = dados.data;
+      atualizarDicaParcelamento();
 
       mensagemScan.textContent = "Dados preenchidos! Confere e ajusta o que precisar antes de salvar.";
       mensagemScan.className = "sucesso";
@@ -1167,16 +1159,6 @@
       mensagemScan.className = "erro-msg";
     }
   }
-
-  checkboxParcelado.addEventListener("change", () => {
-    const parcelado = checkboxParcelado.checked;
-    campoParcelas.style.display = parcelado ? "block" : "none";
-    campoStatusNovo.style.display = parcelado ? "none" : "block";
-    rotuloValor.textContent = parcelado ? "Valor total da compra" : "Valor";
-    if (!parcelado) { dicaParcelamento.textContent = ""; inputParcelas.value = ""; }
-  });
-  inputParcelas.addEventListener("input", atualizarDicaParcelamento);
-  document.getElementById("input-data").addEventListener("change", atualizarDicaParcelamento);
 
   document.getElementById("form-novo").addEventListener("submit", async (evento) => {
     evento.preventDefault();
@@ -1192,59 +1174,42 @@
     const categoriaId = document.getElementById("select-categoria").value || null;
     const subcategoriaId = document.getElementById("select-subcategoria").value || null;
     const data = document.getElementById("input-data").value;
-    const parcelado = checkboxParcelado.checked;
-    const numeroParcelas = parcelado ? parseInt(inputParcelas.value, 10) : 1;
+    const numeroParcelas = parseInt(inputParcelas.value, 10) || 1;
 
-    if (parcelado && (!numeroParcelas || numeroParcelas < 2)) {
-      mensagem.textContent = "Informe em quantas parcelas (mínimo 2).";
+    if (numeroParcelas < 1) {
+      mensagem.textContent = "Informe pelo menos 1 parcela.";
       mensagem.className = "erro-msg";
       botaoSalvar.disabled = false;
       botaoSalvar.textContent = "Salvar lançamento";
       return;
     }
 
-    let error;
+    // divide o valor total em partes iguais, ajustando centavos na
+    // ultima parcela pra nao perder nem sobrar dinheiro no total
+    // (com 1 parcela, isso so' arredonda o valor mesmo pra 2 casas)
+    const valorParcelaBase = Math.floor((valor / numeroParcelas) * 100) / 100;
+    const somaParcelasBase = valorParcelaBase * (numeroParcelas - 1);
+    const valorUltimaParcela = Math.round((valor - somaParcelasBase) * 100) / 100;
 
-    if (parcelado) {
-      // divide o valor total em partes iguais, ajustando centavos na
-      // ultima parcela pra nao perder nem sobrar dinheiro no total
-      const valorParcelaBase = Math.floor((valor / numeroParcelas) * 100) / 100;
-      const somaParcelasBase = valorParcelaBase * (numeroParcelas - 1);
-      const valorUltimaParcela = Math.round((valor - somaParcelasBase) * 100) / 100;
-
-      const primeira = calcularPrimeiraFatura(data);
-      const linhas = [];
-      for (let i = 1; i <= numeroParcelas; i++) {
-        const { ano, mes } = somarMeses(primeira.ano, primeira.mes, i - 1);
-        linhas.push({
-          data_compra: data,
-          data_efetivacao: dataVencimentoISO(ano, mes),
-          categoria_id: categoriaId,
-          subcategoria_id: subcategoriaId,
-          descricao: `${descricao} PARC ${i}/${numeroParcelas}`,
-          valor: i < numeroParcelas ? valorParcelaBase : valorUltimaParcela,
-          status: "pendente",
-          origem: "app_mobile",
-          tipo: "cartao",
-          parcela_atual: i,
-          parcela_total: numeroParcelas,
-        });
-      }
-      ({ error } = await supabaseClient.from("lancamentos").insert(linhas));
-    } else {
-      const status = document.getElementById("select-status-novo").value;
-      ({ error } = await supabaseClient.from("lancamentos").insert({
+    const primeira = calcularPrimeiraFatura(data);
+    const linhas = [];
+    for (let i = 1; i <= numeroParcelas; i++) {
+      const { ano, mes } = somarMeses(primeira.ano, primeira.mes, i - 1);
+      linhas.push({
         data_compra: data,
-        data_efetivacao: data,
+        data_efetivacao: dataVencimentoISO(ano, mes),
         categoria_id: categoriaId,
         subcategoria_id: subcategoriaId,
-        descricao: descricao,
-        valor: valor,
-        status: status,
+        descricao: numeroParcelas > 1 ? `${descricao} PARC ${i}/${numeroParcelas}` : descricao,
+        valor: i < numeroParcelas ? valorParcelaBase : valorUltimaParcela,
+        status: "pendente",
         origem: "app_mobile",
-        tipo: "dia_a_dia",
-      }));
+        tipo: "cartao",
+        parcela_atual: numeroParcelas > 1 ? i : null,
+        parcela_total: numeroParcelas > 1 ? numeroParcelas : null,
+      });
     }
+    const { error } = await supabaseClient.from("lancamentos").insert(linhas);
 
     botaoSalvar.disabled = false;
     botaoSalvar.textContent = "Salvar lançamento";
@@ -1255,16 +1220,14 @@
       return;
     }
 
-    mensagem.textContent = parcelado
+    mensagem.textContent = numeroParcelas > 1
       ? `Compra parcelada em ${numeroParcelas}x salva!`
       : "Lançamento salvo!";
     mensagem.className = "sucesso";
     document.getElementById("form-novo").reset();
     document.getElementById("input-data").valueAsDate = new Date();
-    campoParcelas.style.display = "none";
-    campoStatusNovo.style.display = "block";
-    rotuloValor.textContent = "Valor";
-    dicaParcelamento.textContent = "";
+    inputParcelas.value = "1";
+    atualizarDicaParcelamento();
 
     // atualiza os numeros do Inicio, a lista do Dia a dia e os
     // parcelamentos (uma compra parcelada nova afeta essa tela tambem)
